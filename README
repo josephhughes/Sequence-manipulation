@@ -1,0 +1,17 @@
+Consensus.pl by Joseph Hughes, University of Glasgow
+
+Consensus.pl is a perl script which creates consensus sequences from a fasta alignement.
+This script uses use Bioperl modules.
+Usage: Consensus.pl <list of arguments>
+-in <txt> - the input alignment in fasta format
+-out <txt> - the directory path for the output consensus in fasta format
+-t <txt> - an optional threshold parameter as a percentage (0-100), so that positions in the alignment
+           with lower percent-identity than the threshold are marked by ? in the consensus
+-iupac <txt> - an optional parameter to make a consensus using IUPAC ambiguity codes from DNA and RNA.
+-help        - Get this help
+
+Example:
+perl ../../Script/Consensus.pl -in alignment.fasta -out ../Consensus/consensus.fasta -iupac
+
+It is best to run this from within the directory where you have your alignment so that the 
+identifier of the consensus sequence in the output does not have a path direcotry name.
