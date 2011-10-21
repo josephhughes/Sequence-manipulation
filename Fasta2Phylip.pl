@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
+# obtained from Yu-Wei's Bioinformatics playground 
+# http://yuweibioinfo.blogspot.com/2009/01/fasta-to-phylip-converter.html
 
-#obtained from Yu-Wei's Bioinformatics playground
-#http://yuweibioinfo.blogspot.com/2009/01/fasta-to-phylip-converter.html
 use strict;
 
 MFAtoPHYLIP($ARGV[0]);
@@ -60,4 +60,3 @@ sub MFAtoPHYLIP
 	}
 	close (FILE);
 }
-

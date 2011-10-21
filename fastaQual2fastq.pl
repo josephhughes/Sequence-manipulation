@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# a perl script to convert FASTA + QUAL files to FASTQ
+# a perl script to convert FASTA + QUAL files to FASTQ 
 
 use warnings;
 use strict;

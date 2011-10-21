@@ -27,4 +27,4 @@ must have the same name with extension .qual
 Fasta2Phylip.pl
 A perl script to convert a fasta file to phylip format for running PHYML or RaxML for example.
 
-Usage: Fasta2Phylip.pl path/to/input/fastafile
+Usage: Fasta2Phylip.pl path/to/input/fastafile 
