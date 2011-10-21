@@ -2,6 +2,7 @@ Consensus.pl by Joseph Hughes, University of Glasgow
 
 Consensus.pl is a perl script which creates consensus sequences from a fasta alignement.
 This script uses use Bioperl modules.
+
 Usage: Consensus.pl <list of arguments>
 -in <txt> - the input alignment in fasta format
 -out <txt> - the directory path for the output consensus in fasta format
@@ -15,3 +16,15 @@ perl ../../Script/Consensus.pl -in alignment.fasta -out ../Consensus/consensus.f
 
 It is best to run this from within the directory where you have your alignment so that the 
 identifier of the consensus sequence in the output does not have a path direcotry name.
+======================
+fastaQual2fastq.pl
+A perl script to convert FASTA + QUAL files to FASTQ
+
+Usage: fastaQual2fastq.pl path/to/input/file
+The input file must have the extension .fasta or .fna and the associated quality file
+must have the same name with extension .qual
+=====================
+Fasta2Phylip.pl
+A perl script to convert a fasta file to phylip format for running PHYML or RaxML for example.
+
+Usage: Fasta2Phylip.pl path/to/input/fastafile
