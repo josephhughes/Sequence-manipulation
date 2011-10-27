@@ -92,17 +92,3 @@ my $seq = Bio::Seq->new(-seq => "$cons",
 $out->write_seq($seq);
 }
 
-
-sub largest_value (\%) {
-    my $hash   = shift;
-    my ($key, @keys) = keys   %$hash;
-    my ($big, @vals) = values %$hash;
-
-    for (0 .. $#keys) {
-        if ($vals[$_] > $big) {
-            $big = $vals[$_];
-            $key = $keys[$_];
-        }
-    }
-    $key
-}
