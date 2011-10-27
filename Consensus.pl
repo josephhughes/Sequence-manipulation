@@ -10,12 +10,13 @@ use Bio::SeqIO;
 use Bio::AlignIO;
 
 
-my ($alnfasta,$outcons,$thres,$iupac,$help);
+my ($alnfasta,$outcons,$thres,$iupac,$p,$help);
 &GetOptions(
 	    'in:s'      => \$alnfasta,#aligned fastafile
 	    'out:s'   => \$outcons,#printing out the consensus
 	    't:s'   => \$thres,#consensus with threshold
 	    "iupac"  => \$iupac,  # uses the iupac code
+	    "p"  => \$p,  # uses the rule of plurality
 	    "help"  => \$help,  # provides help with usage
            );
 
@@ -26,6 +27,8 @@ if (($help)&&!($help)||!($alnfasta)||!($outcons)){
  print " -t <txt> - an optional threshold parameter as a percentage (0-100), so that positions in the alignment\n";
  print "            with lower percent-identity than the threshold are marked by ? in the consensus\n";
  print " -iupac <txt> - an optional parameter to make a consensus using IUPAC ambiguity codes from DNA and RNA.\n";
+ print " -p <txt> - an optional parameter to get the sequence based on plurality rule (the sequence found \n";
+ print "            in largest numbers even if it is not found in the majority of cases).\n";
  print " -help        - Get this help\n";
  exit();
  }
@@ -52,6 +55,30 @@ my $consensus_with_threshold = $ali->consensus_string($thres);
 my $seq = Bio::Seq->new(-seq => "$consensus_with_threshold",  
                         -display_id => $filename);
 $out->write_seq($seq);
+}elsif($p){
+print "Generating consensus using the rule of plurality...\n";
+my %cntSeqStr;
+my $filename=$1."_consensus" if $alnfasta=~/(.+)\..+/;
+my $in  = Bio::SeqIO->new(-file => "$alnfasta" ,
+                         -format => 'fasta');
+my $out = Bio::SeqIO->new(-file => ">$outcons" , '-format' => 'fasta');
+while (my $seq = $in->next_seq()){
+  my $seq_str=$seq->seq;  
+  $cntSeqStr{$seq_str}++;
+}
+my $max_key;
+my $max_value = -1;
+while ((my $key, my $value) = each %cntSeqStr) {
+  if ($value > $max_value) {
+    $max_value = $value;
+    $max_key = $key;
+  }
+}
+my $desc="$max_value copies";
+my $seq = Bio::Seq->new(-seq => "$max_key",  
+                        -display_id => $filename,
+                        -desc => $desc);
+$out->write_seq($seq);
 }else{
 print "Generating a strict consensus...\n";
 my $filename=$1."_consensus" if $alnfasta=~/(.+)\..+/;
@@ -63,4 +90,19 @@ my $cons = $ali->consensus_string();
 my $seq = Bio::Seq->new(-seq => "$cons",  
                         -display_id => $filename);
 $out->write_seq($seq);
+}
+
+
+sub largest_value (\%) {
+    my $hash   = shift;
+    my ($key, @keys) = keys   %$hash;
+    my ($big, @vals) = values %$hash;
+
+    for (0 .. $#keys) {
+        if ($vals[$_] > $big) {
+            $big = $vals[$_];
+            $key = $keys[$_];
+        }
+    }
+    $key
 }
