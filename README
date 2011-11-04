@@ -28,3 +28,10 @@ Fasta2Phylip.pl
 A perl script to convert a fasta file to phylip format for running PHYML or RaxML for example.
 
 Usage: Fasta2Phylip.pl path/to/input/fastafile 
+=====================
+SplitFasta.pl
+A perl script to split a multiple fasta file into a user specified number of files. 
+Useful for splitting a job to run on multiple threads or server nodes.
+
+Usage: SplitFasta.pl -in path/to/multifastafile -s int
+int is the number of files you want it split into.
