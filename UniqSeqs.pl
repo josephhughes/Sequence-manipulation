@@ -49,11 +49,15 @@ if ($infile=~/(.+)\.(fa|fna|fasta|fsa)/){
        if ($first){
          my @ids = split (/\s+/,$desc);
          foreach my $ids (@ids){
-           my $newdate=$1 if $ids=~/D(.+)S\d+$/;
-           #print "New date $newdate\n";
-           if ($newdate<$date){
+           my $newdate; 
+           if ($ids=~/D(\d+)S\d+$/){
+             $newdate=$1;
+           }else{
+             $newdate=1000000000000000;
+             #print "New date $newdate\n";
+           }if ($newdate<$date){
              $date=$newdate;
-             $new_id=$ids;
+             $new_id=$ids."_$matching_hash{$uniqseq}";
              
            }
          }
