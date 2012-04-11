@@ -9,9 +9,11 @@ use Bio::SeqIO;
 use Getopt::Long; 
 
 
-my ($infile);
+my ($infile,$first);
 &GetOptions(
 	    'in:s'      => \$infile,#fasta file
+	    'f'         => \$first, # use this argument if you want the sequence to be 
+	    # labelled according to first occurence of a sequence, sequences need to be labelled with sampling day D\d+
            );
 
 print "$infile\n";
@@ -42,7 +44,22 @@ if ($infile=~/(.+)\.(fa|fna|fasta|fsa)/){
      if ($uniqseq){
       # print "$uniqseq $final_hash{$uniqseq}\n";
        my $desc=$final_hash{$uniqseq};
-       my $new_id=$1."_$matching_hash{$uniqseq}" if $desc=~/^(\S+)/;
+       my $new_id;
+       my $date=1000000000000000;
+       if ($first){
+         my @ids = split (/\s+/,$desc);
+         foreach my $ids (@ids){
+           my $newdate=$1 if $ids=~/D(.+)S\d+$/;
+           #print "New date $newdate\n";
+           if ($newdate<$date){
+             $date=$newdate;
+             $new_id=$ids;
+             
+           }
+         }
+       }else{
+         $new_id=$1."_$matching_hash{$uniqseq}" if $desc=~/^(\S+)/;
+       }
        print ">$new_id< and $desc\n";
        if ($new_id){
          my $newseq = Bio::Seq->new(-seq => "$uniqseq",  
