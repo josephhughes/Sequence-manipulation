@@ -35,3 +35,11 @@ Useful for splitting a job to run on multiple threads or server nodes.
 
 Usage: SplitFasta.pl -in path/to/multifastafile -s int
 int is the number of files you want it split into.
+
+=====================
+SelectSeq.pl
+A perl script to pull out individual fasta sequences from a multi fasta file based of id matching,
+description matching, exact id match and randomly selecting a sequence
+
+Usage: SelectSeq.pl -in path/to/multifastafile -out output/file [options]
+
