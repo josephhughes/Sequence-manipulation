@@ -1,6 +1,7 @@
 #!/usr/bin/perl -w
 #
 # Convert fasta to genbank
+# Part of Sequence-manipulation by J. Hughes (joseph(dot)hughes(at)glasgow(dot)ac(dot)uk
 
 use strict;
 use Getopt::Long; 
