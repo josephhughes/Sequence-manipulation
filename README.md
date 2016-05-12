@@ -43,3 +43,17 @@ description matching, exact id match and randomly selecting a sequence
 
 Usage: SelectSeq.pl -in path/to/multifastafile -out output/file [options]
 
+=====================
+gb2fa.pl
+A perl script that uses bioperl and converts a genbank file containing 1 or more sequences
+into a multi fasta file. 
+
+Usage: gb2fa.pl -in infile.gb -out outfile.fa
+
+=====================
+fa2oneline.pl
+A perl script for converting a fasta file wrapped over multiple lines into a fasta file 
+with the sequence on a single line.
+
+Usage: fa2oneline.pl multiline.fa > oneline.fa
+
