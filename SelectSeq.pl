@@ -9,7 +9,7 @@ use Getopt::Long;
 use Bio::SeqIO;                    
  
 
-my ($infasta,$outfile,$fid,$fdescr,$rdm,$help,$mid,$idfile,$singletons,$frequency);
+my ($infasta,$outfile,$fid,$fdescr,$rdm,$help,$mid,$idfile,$singletons,$frequency,$longest);
 &GetOptions(
 	    'in:s'      => \$infasta,#fastafile
 	    'out:s'   => \$outfile,#output fasta file
@@ -19,6 +19,7 @@ my ($infasta,$outfile,$fid,$fdescr,$rdm,$help,$mid,$idfile,$singletons,$frequenc
 	    "fdescr:s"  => \$fdescr,  # find descr
 	    "rdm"  => \$rdm,  # randomly select a fasta sequence
 	    "singletons" => \$singletons, # split file into singletons and non-singletons
+	    "longest" => \$longest,
 	    "freq:s"  => \$frequency, #frequency a sequence needs to be found at
 	    "help"  => \$help,  # provides help with usage
            );
@@ -32,6 +33,7 @@ if (($help)&&!($help)||!($infasta)||!($outfile)){
  print " -fdescr <txt> - the description of a fasta sequence you want to match - partial match\n";
  print " -rdm - randomly select a sequence from a fasta file\n";
  print " -singletons - split file into singletons and no singletons fasta\n";
+ print " -longest - output the longest sequence from a amulitfasta file\n";
  print " -help        - Get this help\n";
  exit();
  }
@@ -43,7 +45,9 @@ my $idcnt=0;
 my $hits=0;
 while (<IDS>){
   chomp($_);
-  $list{$_}++;
+  my $id=$1 if $_=~/^.*(\S+)/;
+  #print "$id\n";
+  $list{$id}++;
   $idcnt++;
 }
 my $in  = Bio::SeqIO->new(-file => "$infasta" ,
@@ -182,6 +186,27 @@ my $totalseq=0;
       }
     }
   }
+
+}elsif($longest){
+my $in  = Bio::SeqIO->new(-file => "$infasta" ,
+                         -format => 'fasta');
+my $out = Bio::SeqIO->new(-file => ">$outfile\_longest.fa" , '-format' => 'fasta');
+my $length=0;
+my ($longest_id,$longest_seq);
+my $totalseq=0;
+  while (my $seq = $in->next_seq()){
+    my $id=$seq->id;
+    my $seqstr=$seq->seq;
+    if (length($seqstr)>$length){
+      $longest_id=$id;
+      $longest_seq=$seqstr;
+      $length=length($seqstr);
+    }
+  }
+  print "The longest sequence is $longest_id which is $length bp in length\n";
+  my $seq_obj = Bio::Seq->new(-seq => $longest_seq, 
+                              -display_id => $longest_id);#-desc => $nbseqs, 
+  $out->write_seq($seq_obj);
 
 }
 
