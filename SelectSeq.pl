@@ -45,7 +45,7 @@ my $idcnt=0;
 my $hits=0;
 while (<IDS>){
   chomp($_);
-  my $id=$1 if $_=~/^.*(\S+)/;
+  my $id=$1 if $_=~/^(.+)\s*/;
   #print "$id\n";
   $list{$id}++;
   $idcnt++;
