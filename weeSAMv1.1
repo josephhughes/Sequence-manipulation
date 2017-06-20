@@ -1,0 +1,314 @@
+#!/usr/bin/perl -w 
+
+# Script written by Joseph Hughes at the University of Glasgow
+# Use this script to produce information on the breadth and depth of coverage
+# from a SAM file. Gives the number of mapped reads. Average coverage
+# Min and Max coverage
+# Modified 15-11-2016 to add -d 10000000 to samtools depth command
+
+use Getopt::Long; 
+use strict;
+use CGI ':standard';
+use GD::Graph::lines;
+use GD::Text;
+use Statistics::R;
+
+# declaring global variables
+my $cutoff=0;
+my ($samfile,$bamfile,$out,$help,%info,$totalunmapped,$totalmapped,%depth);
+&GetOptions(
+	    '-s:s'  => \$samfile,#the sam file 
+	    '-b:s'  => \$bamfile,#the bam file
+	    '-c:i'  => \$cutoff,# the number of reads to use as a cut-off
+	    "h|help|?"  => \$help,#the help
+	    '-out=s'  => \$out,#file with coverage of for the file
+           );
+
+if (($help)||(!$bamfile&&!$samfile)){
+print "               _)_            Usage : weeSAM.pl <list of arguments>\n";
+print "           .-'(/ '-.          -s <txt>   - the input SAM file\n";
+print "          /    `    \\         -b <txt>   - the input BAM file\n";
+print "         /  -     -  \\        -c <int>   - cut-off value for number of mapped reads [default = 0]\n";
+print "        (`  a     a  `)       -out <txt> - the output file name\n";
+print "         \\     ^     /        -help|h|?  - Get this help\n";
+print "          '. '---' .'                       \n";
+print "          .-`'---'`-.                       \n";
+print "         /           \\                      \n";
+print "        /  / '   ' \\  \\                     \n";
+print "      _/  /|  SAM  |\\  \\_                   \n";
+print "     `/|\\` |+++++++|`/|\\`                   \n";
+print "          /\       /\\                       \n";
+print "          | `-._.-` |                       \n";
+print "          \\   / \\   /                       \n";
+print "          |_ |   | _|                       \n";
+print "          | _|   |_ |                       \n";
+print "          (ooO   Ooo)                       \n";
+exit();
+ }
+
+
+if ($bamfile){
+  #print "$bamfile\n";
+  makeSumStats($bamfile);
+}
+if ($samfile){
+  print "Converting bam to sam ...\n";
+  my $filename=$samfile;
+  my $stub=$samfile;
+  my $filename_sorted;
+#  my $sorted=$filename."_sorted"; #added variable for samtools 1.3 SM
+  $filename=~s/\.sam/\.bam/;
+  $stub=~s/\.sam//;
+  my $sorted=$stub."_sorted"; #added variable for samtools 1.3 SM
+  system("samtools view -S $samfile -b -o $filename");
+  print "Sorting bam ...\n";
+  system("samtools sort -o $sorted $filename"); #updated sort command for samtools 1.3
+  print "bam indexing ...\n";
+  system("samtools index $sorted");
+  makeSumStats($sorted);
+  
+}
+
+sub makeSumStats{
+  my $bam=shift;
+  print "$bam\n";
+  open(OUT,">$out")||die "Can't open output\n";
+  system("samtools idxstats $bam > tmp_mapped.txt");
+  open(MAPPED,"<tmp_mapped.txt")||die "Can't open tmp_mapped.txt\n";
+  while(<MAPPED>){
+   chomp($_);
+   my @cols=split(/\t/,$_);
+   if ($_=~/^\*/){
+      $totalunmapped+=$cols[3]; 
+    }else{
+      $totalmapped+=$cols[2];
+      $totalunmapped+=$cols[3];
+      if ($cols[2]>$cutoff){
+        #print "$_","\n";
+        $info{$cols[0]}{"reflength"}=$cols[1];
+        $info{$cols[0]}{"mapped"}=$cols[2]; 
+      } 
+    }
+  }
+  close(MAPPED);
+  system("rm tmp_mapped.txt");
+  print "Total of mapped = $totalmapped\nTotal of unmapped = $totalunmapped\n";
+  my $totalreads=$totalunmapped+$totalmapped;
+  print "Total reads $totalreads\n";
+  
+  system("samtools depth -d 10000000 $bam > tmp_depth.txt");
+  open(DEPTH,"<tmp_depth.txt")||die "Can't open tmp_depth.txt\n";
+  while(<DEPTH>){
+    chomp($_);
+    my @cols=split(/\t/,$_);
+    if ($info{$cols[0]}{"reflength"}){
+      $depth{$cols[0]}{$cols[1]}=$cols[2];
+      $info{$cols[0]}{"breadth"}++;
+      $info{$cols[0]}{"sumdepth"}+=$cols[2];
+      if (!$info{$cols[0]}{"min"}){
+        $info{$cols[0]}{"min"}=$cols[2];
+      }elsif ($info{$cols[0]}{"min"}>$cols[2] && $info{$cols[0]}{"min"}){
+        $info{$cols[0]}{"min"}=$cols[2];
+      }
+      if (!$info{$cols[0]}{"max"}){
+        $info{$cols[0]}{"max"}=$cols[2];
+      }elsif ($info{$cols[0]}{"max"}<$cols[2] && $info{$cols[0]}{"max"}){
+        $info{$cols[0]}{"max"}=$cols[2];
+      }
+    }
+  }  
+  close(DEPTH);
+  system("rm tmp_depth.txt");
+  
+  print OUT "ReferenceID\tRefLength\tMappedReads\tBreadth\tPercentCovered\tMinDepth\tMaxDepth\tAverageDepth\n";
+  for my $id (keys %info){
+    if ($info{$id}{"reflength"}){
+      print "Processing $id ....\n";
+      print OUT "$id\t".$info{$id}{"reflength"}."\t";
+      print OUT $info{$id}{"mapped"}."\t";
+      print OUT $info{$id}{"breadth"}."\t";
+      print OUT $info{$id}{"breadth"}*100/$info{$id}{"reflength"}."\t";
+      print OUT $info{$id}{"min"}."\t".$info{$id}{"max"}."\t";
+      print OUT $info{$id}{"sumdepth"}/$info{$id}{"breadth"}."\n";
+      # R plots causing problems
+      #coveragePlotR($id,%{$depth{$id}});
+    }
+  }
+}
+
+# sub coveragePlotR{
+#   my (@x,@y);
+#   my ($id,%deep)=@_;
+#   my $length=$info{$id}{"reflength"};
+#   #print "$length\n";
+#   #print "$id\n";
+#   while (my ($x, $y) = each %deep) {
+#     push @x, $x;
+#     push @y, $y;
+#     #print "$x\t$y\n";
+#   }
+#   #print scalar(@x)."\t".scalar(@y)."\n";
+#   my $outputname=$id;
+#   $outputname=~s/\s/_/g;
+#   $outputname=~s/\./_/g;
+#   $outputname=~s/\,/_/g;
+#   $outputname=~s/\|/_/g;
+#   $outputname=~s/\\/_/g;
+#   $outputname=~s/\//_/g;
+#   print "$outputname\n";
+#   my $R = Statistics::R->new() ;
+#   #my $R = Statistics::R->new(shared => 1) ;
+#   #my $R2 = Statistics::R->new( shared => 1);
+#   $R->startR ;
+#   $R->run(qq`x<-vector()`);
+#   $R->run(qq`y<-vector()`);
+# #   for (my $i=0; $i<scalar(@x); $i=$i+1000){ 
+# #     my @subsetx=@x[$i..999];
+# #     $R->set( 'xsubset', \@subsetx );
+# #     $R->run(qq`x=c(x,xsubset)`);
+# #     my @subsety=@y[$i..999];
+# #     $R->set( 'ysubset', \@subsety );
+# #     $R->run(qq`y=c(y,ysubset)`);
+# # 
+# #   }
+#   $R->set( 'x', \@x );
+#   $R->set( 'y', \@y );
+#   $R->set( 'xmax',$length );
+#   $R->run(qq`data=as.data.frame(cbind(x,y))`);
+#   #my $xdata = $R->get('x');
+#   #print "@x\n\nRdata\n\n@$xdata\n";
+# 
+#   my $data = $R->get('data');
+#   print "@$data\n";
+#   $R->run(q`sorted.data<-data[order(data$x),]`);
+#   $R->run(qq`all.sites <- seq(1, xmax)`);
+#   $R->run(qq`all.sites.frame <- data.frame(list(x=all.sites))`);
+#   $R->run(qq`merged.data <- merge(all.sites.frame, sorted.data, all=T)`);
+#   $R->run(q`merged.data$y[which(is.na(merged.data$y))] <- 0`);
+#   my $mergeddata = $R->get('merged.data');
+#   print "MERGED DATA @$mergeddata\n";
+#   $R->run(qq`library(ggplot2)`);
+#   $R->run(qq`coverage<-ggplot(merged.data, aes(x = x))  + geom_ribbon(aes(ymin=0, ymax=y), size = 1) + xlab("Site") + ylab("Reads") + xlim(1, xmax) + ylim(0, max(y)) + theme_bw() + opts(plot.title = element_text(size = 10))+ ggtitle("Reference: $id\nMapped reads: $info{$id}{"mapped"}\nBreadth: $info{$id}{"breadth"} sites\n") `);
+#   $R->run(qq`ggsave(coverage,file="$outputname\.pdf", width=8, height=4)`);
+#   $R->stopR() ;
+# }
+sub coveragePlotR{
+  my (@x,@y);
+  my ($id,%deep)=@_;
+  my $length=$info{$id}{"reflength"};
+  #print "$length\n";
+  #print "$id\n";
+  while (my ($x, $y) = each %deep) {
+    push @x, $x;
+    push @y, $y;
+    #print "$x\t$y\n";
+  }
+  my $outputname=$id;
+  $outputname=~s/\s/_/g;
+  $outputname=~s/\./_/g;
+  $outputname=~s/\,/_/g;
+  $outputname=~s/\|/_/g;
+  $outputname=~s/\\/_/g;
+  $outputname=~s/\//_/g;
+  print "$outputname\n";
+  my $R = Statistics::R->new() ;
+  #my $R = Statistics::R->new(shared => 1) ;
+  #my $R2 = Statistics::R->new( shared => 1);
+  
+  # $R->set( 'x', \@x );
+  # $R->set( 'y', \@y );
+  $R->run(qq`x<-vector()`);
+  $R->run(qq`y<-vector()`);
+  while ( my @chunksx = splice @x, 0, 5000 ) {
+    $R->set( 'xsubset', \@chunksx );
+    $R->run(qq`x=c(x,xsubset)`);
+  }
+  while ( my @chunksy = splice @y, 0, 5000 ) {
+    $R->set( 'ysubset', \@chunksy );
+    $R->run(qq`y=c(y,ysubset)`);
+  }
+
+
+  
+#   for (my $i=0; $i<scalar(@x); $i=$i+1000){ 
+#     my @subsetx=@x[$i..999];
+#     $R->set( 'xsubset', \@subsetx );
+#     $R->run(qq`x=c(x,xsubset)`);
+#     my @subsety=@y[$i..999];
+#     $R->set( 'ysubset', \@subsety );
+#     $R->run(qq`y=c(y,ysubset)`);
+#   }
+
+  $R->set( 'xmax',$length );
+  $R->run(qq`data=as.data.frame(cbind(x,y))`);
+  #my $xdata = $R->get('x');
+  #print "@x\n\nRdata\n\n@$xdata\n";
+
+  #my $data = $R->get('data');
+  #print "@$data\n";
+  $R->run(q`sorted.data<-data[order(data$x),]`);
+  $R->run(qq`all.sites <- seq(1, xmax)`);
+  $R->run(qq`all.sites.frame <- data.frame(list(x=all.sites))`);
+  $R->run(qq`merged.data <- merge(all.sites.frame, sorted.data, all=T)`);
+  $R->run(q`merged.data$y[which(is.na(merged.data$y))] <- 0`);
+  #my $mergeddata = $R->get('merged.data');
+  #print "MERGED DATA @$mergeddata\n";
+  $R->run(qq`library(ggplot2)`);
+  $R->run(qq`coverage<-ggplot(merged.data, aes(x = x))  + geom_ribbon(aes(ymin=0, ymax=y), size = 1) + xlab("Site") + ylab("Reads") + xlim(1, xmax) + ylim(0, max(y)) + theme_bw() + opts(plot.title = element_text(size = 10))+ ggtitle("Reference: $id\nMapped reads: $info{$id}{"mapped"}\nBreadth: $info{$id}{"breadth"} sites\n") `);
+  $R->run(qq`ggsave(coverage,file="$outputname\.pdf", width=8, height=4)`);
+}
+
+
+sub coveragePlotGD{
+  my (@x,@y);
+  my ($length,%deep)=@_;
+  print "Length = $length\n";
+#   foreach my $key (sort {$a<=>$b} keys %deep){
+#     print "$key $deep{$key}\n";
+#   }
+
+  while (my ($x, $y) = each %deep) {
+    push @x, $x;
+    push @y, $y;
+  }
+  my @data = (\@x, \@y);
+  my $mygraph = GD::Graph::lines->new(900, 300);
+  $mygraph->set(
+    x_label     => 'Site',
+    y_label     => 'Depth',
+    title       => 'Depth of coverage',
+    # Draw datasets in 'solid', 'dashed' and 'dotted-dashed' lines
+    line_types  => [1],
+    # Set the thickness of line
+    line_width  => 2,
+    # Set colors for datasets
+    dclrs       => ['red'],
+    x_tick_number => 'auto',
+    
+  ) or warn $mygraph->error;
+  #$mygraph->set_x_axis_font(GD::Font->Large);
+  $mygraph->set_y_axis_font('/usr/share/fonts/truetype/freefont/FreeSans.ttf',14);
+ # $mygraph->set_y_axis_font(GD::Font->Large);
+  $mygraph->set_x_label_font('/usr/share/fonts/truetype/freefont/FreeSans.ttf',16);
+  $mygraph->set_y_label_font('/usr/share/fonts/truetype/freefont/FreeSans.ttf',16);
+  $mygraph->set_x_axis_font('/usr/share/fonts/truetype/freefont/FreeSans.ttf',14);
+  $mygraph->set_y_axis_font('/usr/share/fonts/truetype/freefont/FreeSans.ttf',14);
+  $mygraph->set_values_font('/usr/share/fonts/truetype/freefont/FreeSans.ttf',14);
+  $mygraph->set_title_font('/usr/share/fonts/truetype/freefont/FreeSans.ttf',20);
+  my $myimage = $mygraph->plot(\@data) or die $mygraph->error;
+
+  #print "Content-type: image/png\n\n";
+  #print $myimage->png;
+  # Open a file for writing 
+  open(PICTURE, ">picture.png") or die("Cannot open file for writing");
+
+  # Make sure we are writing to a binary stream
+  binmode PICTURE;
+
+  # Convert the image to PNG and print it to the file PICTURE
+  print PICTURE $myimage->png;
+  close PICTURE;
+
+
+
+}
