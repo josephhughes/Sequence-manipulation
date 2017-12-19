@@ -1,0 +1,230 @@
+#!/usr/bin/perl -w
+
+# Script written by Joseph Hughes at the University of Glasgow
+# Use this script to produce information on the breadth and depth of coverage
+# from a SAM file. Gives the number of mapped reads. Average coverage
+# Min and Max coverage
+# Modified 15-11-2016 to add -d 10000000 to samtools depth command
+# Modified 05-12-2016 to add standard deviation of mean depth and percent 
+# sites above 0.2, 0.5, 1.0 mean depth for uniformity of coverage
+# Modified 10-12-2016 to provide a coverage plot in PDF format using the Rscript weeSAM_coverage.r
+# Modified 30-01-2017 to limit the dependencies
+ 
+use Getopt::Long; 
+use strict;
+
+# declaring global variables
+my $cutoff=0;
+my ($samfile,$bamfile,$out,$help,%info,$totalunmapped,$totalmapped,%depth,$pdf);
+&GetOptions(
+	    '-s:s'  => \$samfile,#the sam file 
+	    '-b:s'  => \$bamfile,#the bam file
+	    '-c:i'  => \$cutoff,# the number of reads to use as a cut-off
+	    "h|help|?"  => \$help,#the help
+	    '-out=s'  => \$out,#file with coverage of for the file
+	    '-plot=s' => \$pdf,#the name of an output file with etension .pdf
+           );
+
+if (($help)||(!$bamfile&&!$samfile)){
+print "               _)_            Usage : weeSAM.pl <list of arguments>\n";
+print "           .-'(/ '-.          -s <txt>    - the input SAM file\n";
+print "          /    `    \\        -b <txt>    - the input BAM file\n";
+print "         /  -     -  \\       -c <int>    - cut-off value for number of mapped reads [default = 0]\n";
+print "        (`  a     a  `)       -out <txt>  - the output file name\n";
+print "         \\     ^     /       -plot <txt> - an output file name for the coverage plot (.pdf)\n";
+print "          '. '---' .'         -help|h|?   - Get this help\n";
+print "          .-`'---'`-.                       \n";
+print "         /           \\                      \n";
+print "        /  / '   ' \\  \\                     \n";
+print "      _/  /|  SAM  |\\  \\_                   \n";
+print "     `/|\\` |+++++++|`/|\\`                   \n";
+print "          /\       /\\                       \n";
+print "          | `-._.-` |                       \n";
+print "          \\   / \\   /                       \n";
+print "          |_ |   | _|                       \n";
+print "          | _|   |_ |                       \n";
+print "          (ooO   Ooo)                       \n";
+print "****************************************************************************************************\n";
+print "Statistics in the output file\n";
+print "ReferenceID = the identifier of the reference (you will have as many lines in the output as you have\n\t segments/chromosomes in your genome)\n";
+print "RefLength =  the length in bases of each of your references\n";
+print "MappedReads = the number of reads mapped to each reference\n";
+print "Breadth = the number of sites in the genome covered by reads (many sites could just be covered by one\n\t read)\n";
+print "PercentCovered = the percent of sites in your genome that have coverage\n";
+print "MinDepth = the minimum read depth observed\n";
+print "MaxDepth = the maximum read depth observed \n";
+print "AverageDepth = the average read depth\n";
+print "StandardDeviation = the standard deviation of the mean (AverageDepth)\n";
+print "Above0.2Depth = the percentage of sites that have greater than 0.2 * AverageDepth (the higher this\n\t number the better)\n";
+print "Above0.5Depth = the percentage of sites that have greater than 0.5 * AverageDepth (the higher this\n\t number the better, if it was equal to the reference length, this would indicate\n\t reasonable even coverage across the genome)\n";
+print "Above1.0Depth = the percentage of sites that have greater than 1 * AverageDepth (if this is very small,\n\t then it would indicate a peak with very high coverage)\n";
+print "****************************************************************************************************\n";
+exit();
+ }
+
+
+if ($bamfile){
+  #print "$bamfile\n";
+  makeSumStats($bamfile);
+}
+if ($samfile){
+  print "Converting sam to bam ...\n";
+  my $filename=$samfile;
+  my $stub=$samfile;
+  my $filename_sorted;
+#  my $sorted=$filename."_sorted"; #added variable for samtools 1.3 SM
+  $filename=~s/\.sam/\.bam/;
+  $stub=~s/\.sam//;
+  my $sorted=$stub."_sorted"; #added variable for samtools 1.3 SM
+  system("samtools view -bS $samfile | samtools sort -o $filename");
+#  print "Sorting bam ...\n";
+#  system("samtools sort -o $sorted $filename"); #updated sort command for samtools 1.3
+  print "bam indexing ...\n";
+  system("samtools index $filename");
+  print "Consider deleting your .sam file to save space\n";
+  makeSumStats($filename);
+  
+}
+
+sub makeSumStats{
+  my $bam=shift;
+  print "$bam\n";
+  open(OUT,">$out")||die "Can't open output\n";
+  system("samtools idxstats $bam > tmp_mapped.txt");
+  open(MAPPED,"<tmp_mapped.txt")||die "Can't open tmp_mapped.txt\n";
+  while(<MAPPED>){
+   chomp($_);
+   my @cols=split(/\t/,$_);
+   if ($_=~/^\*/){
+      $totalunmapped+=$cols[3]; 
+    }else{
+      $totalmapped+=$cols[2];
+      $totalunmapped+=$cols[3];
+      if ($cols[2]>$cutoff){
+        #print "$_","\n";
+        $info{$cols[0]}{"reflength"}=$cols[1];
+        $info{$cols[0]}{"mapped"}=$cols[2]; 
+      } 
+    }
+  }
+  close(MAPPED);
+  system("rm tmp_mapped.txt");
+  print "Total of mapped = $totalmapped\nTotal of unmapped = $totalunmapped\n";
+  my $totalreads=$totalunmapped+$totalmapped;
+  print "Total reads $totalreads\n";
+  
+  system("samtools depth -d 10000000 $bam > tmp_depth.txt");
+  open(DEPTH,"<tmp_depth.txt")||die "Can't open tmp_depth.txt\n";
+  while(<DEPTH>){
+    chomp($_);
+    my @cols=split(/\t/,$_);
+    if ($info{$cols[0]}{"reflength"}){
+      $depth{$cols[0]}{$cols[1]}=$cols[2];
+      $info{$cols[0]}{"breadth"}++;
+      $info{$cols[0]}{"sumdepth"}+=$cols[2];
+      if (!$info{$cols[0]}{"min"}){
+        $info{$cols[0]}{"min"}=$cols[2];
+      }elsif ($info{$cols[0]}{"min"}>$cols[2] && $info{$cols[0]}{"min"}){
+        $info{$cols[0]}{"min"}=$cols[2];
+      }
+      if (!$info{$cols[0]}{"max"}){
+        $info{$cols[0]}{"max"}=$cols[2];
+      }elsif ($info{$cols[0]}{"max"}<$cols[2] && $info{$cols[0]}{"max"}){
+        $info{$cols[0]}{"max"}=$cols[2];
+      }
+    }
+  }  
+  close(DEPTH);
+  if ($pdf){
+   print "weeSAM_coverage.r tmp_depth.txt $pdf";
+   system("weeSAM_coverage.r tmp_depth.txt $pdf");
+   system("rm tmp_depth.txt");
+  }else{
+   system("rm tmp_depth.txt");
+  }
+  
+  # uniformity of coverage
+  # check how many sites have >0.2, >0.5, >1.0, and >1.8 the mean coverage
+  foreach my $id (keys %info){
+    if ($info{$id}{"reflength"}){
+      my $mean_cov=$info{$id}{"sumdepth"}/$info{$id}{"reflength"};
+      my $cov02=$mean_cov * 0.2;
+      my $cov05=$mean_cov * 0.5;
+      my $cov18=$mean_cov * 1.8;
+      my @depthvalues=();
+      foreach my $site (keys %{$depth{$id}}){
+        push(@depthvalues,$depth{$id}{$site});
+        if (($depth{$id}{$site})>$cov02){
+          $info{$id}{"cov0.2"}++;
+        }
+        if (($depth{$id}{$site})>$cov05){
+          $info{$id}{"cov0.5"}++;
+        }
+        if (($depth{$id}{$site})>$mean_cov){
+          $info{$id}{"cov1.0"}++;
+        } 
+        if (($depth{$id}{$site})>$cov18){
+          $info{$id}{"cov1.8"}++;
+        }       
+      }
+      my $std = &calculateStdDev(@depthvalues);
+      my $coefVar = $std / $mean_cov;
+      $info{$id}{"stdev"}=$std;
+      $info{$id}{"coefVar"}=$coefVar;
+    }
+  }
+  
+  print OUT "ReferenceID\tRefLength\tMappedReads\tBreadth\tPercentCovered\tMinDepth\tMaxDepth\tAverageDepth\tStandardDeviation\tAbove0.2Depth\tAbove0.5Depth\tAbove1.0Depth\tAbove1.8Depth\tVariationCoeficient\n";
+  for my $id (keys %info){
+    if ($info{$id}{"reflength"}){
+      print "Processing $id ....\n";
+      print OUT "$id\t".$info{$id}{"reflength"}."\t";
+      print OUT $info{$id}{"mapped"}."\t";
+      print OUT $info{$id}{"breadth"}."\t";
+      print OUT $info{$id}{"breadth"}*100/$info{$id}{"reflength"}."\t";
+      print OUT $info{$id}{"min"}."\t".$info{$id}{"max"}."\t";
+      print OUT sprintf("%.2f",($info{$id}{"sumdepth"}/$info{$id}{"reflength"}))."\t";
+      print OUT sprintf("%.2f",($info{$id}{"stdev"}))."\t";
+      print OUT sprintf("%.2f",(($info{$id}{"cov0.2"}/$info{$id}{"reflength"}) * 100))."\t";
+      print OUT sprintf("%.2f",(($info{$id}{"cov0.5"}/$info{$id}{"reflength"}) * 100))."\t";
+      print OUT sprintf("%.2f",(($info{$id}{"cov1.0"}/$info{$id}{"reflength"}) * 100))."\t";
+      print OUT sprintf("%.2f",(($info{$id}{"cov1.8"}/$info{$id}{"reflength"}) * 100))."\t";
+      print OUT sprintf("%.2f",($info{$id}{"coefVar"}))."\t";
+    }
+  }
+}
+
+sub calculateStdDev{
+    my( $n );               #   the number of values
+    my( $stddev );          #   the standard deviation, calculated by this
+                            #     subroutine, from the variance
+    my( $sum );             #   the sum of the values
+    my( $sumOfSquares );    #   the sum of the squares of the values
+    my( $variance );        #   the variance, calculated by this subroutine
+    my( $x );               #   set to each value
+
+    #   Initialize variables.
+    $n = 0;
+    $sum = 0;
+    $sumOfSquares = 0;
+
+    #   Use a foreach loop to get each value from the array @_, which
+    #   is the argument array and which contains the values.
+    foreach $x ( @_ ){
+        #   Add the value to the growing sum.
+        $sum += $x;
+        #   Increment $n, the number of values.
+        $n++;
+        #   Add the square of the value to the growing sum of the squares.
+        $sumOfSquares += $x * $x;
+    }
+
+    #   Calculate the variance.
+    $variance = ( $sumOfSquares - ( ( $sum * $sum ) / $n ) ) / ( $n - 1 );
+    #   Calculate the standard deviation, which is the square root of the
+    #   variance.
+    $stddev = sqrt( $variance );
+    #   Return the calculated standard deviation.
+    return $stddev;
+}
+
