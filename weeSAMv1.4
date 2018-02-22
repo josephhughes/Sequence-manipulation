@@ -189,7 +189,7 @@ sub makeSumStats{
       print OUT sprintf("%.2f",(($info{$id}{"cov0.5"}/$info{$id}{"reflength"}) * 100))."\t";
       print OUT sprintf("%.2f",(($info{$id}{"cov1.0"}/$info{$id}{"reflength"}) * 100))."\t";
       print OUT sprintf("%.2f",(($info{$id}{"cov1.8"}/$info{$id}{"reflength"}) * 100))."\t";
-      print OUT sprintf("%.2f",($info{$id}{"coefVar"}))."\t";
+      print OUT sprintf("%.2f",($info{$id}{"coefVar"}))."\n";
     }
   }
 }
