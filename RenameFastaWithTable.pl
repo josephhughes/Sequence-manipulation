@@ -25,7 +25,8 @@ open(TABLE,"$table")||die "Can't open input $table!\n";
 while (<TABLE>){
   chomp($_);
   my @line=split(/\t/,$_);
-  $newnames{$line[$col]}=$line[$newcol];
+  (my $newname=$line[$newcol])=~s/\s/_/g;
+  $newnames{$line[$col]}=$newname;
 }
 
 
