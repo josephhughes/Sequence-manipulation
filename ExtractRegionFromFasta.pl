@@ -1,4 +1,4 @@
-#!/usr/bin perl
+#!/usr/bin/perl
 
 ##################################################################### 
 # A perlscript written by Joseph Hughes, University of Glasgow
