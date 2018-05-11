@@ -11,6 +11,7 @@ use Getopt::Long;
 use warnings;
 use Bio::DB::Fasta;
 
+my $ext=0;
 my ($help,$in,$start,$stop,$ref,$out); 
 &GetOptions(
 	    'in:s'  => \$in, #multifasta file
@@ -18,6 +19,7 @@ my ($help,$in,$start,$stop,$ref,$out);
 	    "ref:s" => \$ref,#the identifier of the sequence to extract from
 	    'start:s'  => \$start, #the start site
 	    'stop:s'  => \$stop, #the stop site
+	    'ext:i'  => \$ext, #number of bases to extend by at either end
         "help:s" => \$help,
            );
 
@@ -27,17 +29,18 @@ if (($help)&&!($help)||!($in)||!($ref)||!($start)||!($stop)){
  print " -ref <txt>  - the identifier of the sequence to extract from\n";
  print " -start <txt>  - the start site\n";
  print " -stop <txt>  - the stop site\n";
+ print " -ext <txt>  - the number of bases to extend by at either end\n";
  print " -out <txt>  - fasta output for the region of interest\n";
  print " -help        - Get this help\n";
  exit();
 }
 
 my $db = Bio::DB::Fasta->new($in);
-my $seq = $db->seq($ref, $start => $stop);
+my $seq = $db->seq($ref, $start-$ext => $stop+$ext);
 if ($out){
   open(OUT,">$out")|| die "Can't open $out\n";
-  print OUT ">$ref\:$start-$stop\n$seq\n";
+  print OUT ">$ref\:".($start-$ext)."-".($stop+$ext)."\n$seq\n";
 }else{
-  print ">$ref\:$start-$stop\n$seq\n";
+  print ">$ref\:".($start-$ext)."-".($stop+$ext)."\n$seq\n";
 }
 
