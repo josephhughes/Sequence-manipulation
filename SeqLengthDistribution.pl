@@ -8,7 +8,9 @@ use Getopt::Long;
 use Bio::SeqIO;
 
 my $lower=0;
-my ($inseq,%freq,%newfreq,$outfile,$upper,$seq_out,$size);
+my $sum_len=0;
+my $new_sum_len=0;
+my ($inseq,%freq,%newfreq,$outfile,$upper,$seq_out,$size,$sum_len);
 &GetOptions(
 	    'inseq:s'   => \$inseq, #the sequences
 	    'out:s'   => \$outfile,#output fasta file
@@ -25,28 +27,33 @@ if ($outfile){
 while( my $seq = $seqio_obj->next_seq ) {
   my $length=$seq->length;
   $freq{$length}++;
+  $sum_len=$sum_len+$length;
   if ($outfile && $upper && !$lower){
     if ($length>$upper){
       $seq_out->write_seq($seq);
       $newfreq{$length}++;
+      $new_sum_len=$new_sum_len+$length;
     }
   }
   if ($outfile && !$upper && $lower){
     if ($length<$lower){
       $seq_out->write_seq($seq);
       $newfreq{$length}++;
+      $new_sum_len=$new_sum_len+$length;
     }
   }
   if ($outfile && $upper && $lower){
     if ($length<$lower && $length>$upper){
       $seq_out->write_seq($seq);
       $newfreq{$length}++;
+      $new_sum_len=$new_sum_len+$length;
     }
   }
   if ($outfile && $size){
     if ($length==$size){
       $seq_out->write_seq($seq);
       $newfreq{$length}++;
+      $new_sum_len=$new_sum_len+$length;
     }
   }
 }
@@ -60,6 +67,7 @@ foreach my $seqnb (sort {$a<=>$b} keys %freq){
   print "\n";
 }
 
+print "Sum of lengths is $sum_len\n";
 print "New distribution:\nx sequences with y length\n";
 foreach my $seqnb (sort {$a<=>$b} keys %newfreq){
   print "$seqnb\t$freq{$seqnb}\t";
@@ -68,3 +76,5 @@ foreach my $seqnb (sort {$a<=>$b} keys %newfreq){
 #   }
   print "\n";
 }
+
+print "Sum of lengths in the newfile is $new_sum_len\n";
