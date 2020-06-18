@@ -10,14 +10,26 @@ use Getopt::Long;
 use Bio::SeqIO;
 
 
-my ($in,$out,$table, $col, $newcol,%newnames,%seen);
+my ($in,$out,$table, $col, $newcol,%newnames,%seen,$help);
 &GetOptions(
 	    'in:s'      => \$in,#the input fasta file
 	    'table:s'     => \$table,#input table with the names (tabl delimited)
 	    'out:s'   => \$out,#the output file name
 	    'col:s'  => \$col, #the column containing the old name
 	    'newcol:s'  => \$newcol, #the column containing the new names
+	    'help' => \$help,
            );
+if ($help||!$in||!$table||!$out||!$col||!$newcol){
+  print "Usage: perl RenameFastaWithTable.pl -in in.fa -table metadata.txt -out renamed.fa -col 1 -newcol 3\n";
+  print "-in <txt> - input fasta sequence\n";
+  print "-table <txt> - metadata table with names of sequences\n";
+  print "-out <fasta> - renamed output fasta sequence\n";
+  print "-col <txt> - original column number with the original name\n";
+  print "-newcol <txt> - column number for the new name\n";
+  print "-help        - Get this help\n";
+  exit();
+}
+
 
 $col=$col-1;
 $newcol=$newcol-1;
