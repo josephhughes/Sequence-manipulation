@@ -8,16 +8,19 @@ use strict;
 use Getopt::Long; 
 use Bio::SeqIO;                    
  
-
-my ($infasta,$outfile,$fid,$fdescr,$rdm,$help,$mid,$idfile,$singletons,$frequency,$longest);
+my $nomatchid="NoMatch_ids.txt";
+my ($infasta,$outfile,$fid,$fdescr,$rdm,$help,$mid,$idfile,$singletons,$frequency,$longest,$inout,$cogukid);
 &GetOptions(
 	    'in:s'      => \$infasta,#fastafile
 	    'out:s'   => \$outfile,#output fasta file
 	    'fid:s'   => \$fid,#find id
 	    'mid:s'  => \$mid,#match id
 	    'idfile:s' => \$idfile, #text file with mutliple ids to pull out
+	    'nomatchid:s' => \$nomatchid, #text file with the ids for which no sequence was found
 	    "fdescr:s"  => \$fdescr,  # find descr
+	    'cogukid' => \$cogukid,  # if option provided it will assume the cogukid e.g., hCoV-19/England/20144004404/2020...
 	    "rdm"  => \$rdm,  # randomly select a fasta sequence
+	    "inout"  => \$inout,  # creates a file In with  the sequences of the list and Out with those that are not in the list
 	    "singletons" => \$singletons, # split file into singletons and non-singletons
 	    "longest" => \$longest,
 	    "freq:s"  => \$frequency, #frequency a sequence needs to be found at
@@ -30,8 +33,11 @@ if (($help)&&!($help)||!($infasta)||!($outfile)){
  print " -fid <txt> - the id of the fasta file you want to match - exact match\n";
  print " -mid <txt> - the id of the fasta file you want to match - partial match\n";
  print " -idfile <txt> - a file with multiple ids you want to match pull out\n";
+ print " -nomatchid <txt> - text file with the ids for which no sequence was found [default NoMatch_ids.txt]\n";
  print " -fdescr <txt> - the description of a fasta sequence you want to match - partial match\n";
  print " -rdm - randomly select a sequence from a fasta file\n";
+ print " -cogukid - assume the cogukid in the fasta file when only isolate id is provided in idfile, e.g., hCoV-19/England/20144004404/2020\n"; 
+ print " -inout - outputs a file In with the sequences in the list and Out with the sequences that are not in the list\nIf option is not used, then only one output is given with the sequences in the list";
  print " -singletons - split file into singletons and no singletons fasta\n";
  print " -longest - output the longest sequence from a amulitfasta file\n";
  print " -help        - Get this help\n";
@@ -52,23 +58,55 @@ while (<IDS>){
 }
 my $in  = Bio::SeqIO->new(-file => "$infasta" ,
                          -format => 'fasta');
-my $outid = Bio::SeqIO->new(-file => ">In$outfile" , '-format' => 'fasta');
-my $out = Bio::SeqIO->new(-file => ">Not$outfile" , '-format' => 'fasta');
-while (my $seq = $in->next_seq()){
-  my $id=$seq->id;
- ## foreach my $listid (keys %list){
-    if ($list{$id}){
-     $outid->write_seq($seq);
-     $hits++;
-     delete $list{$id};
-    }else{
-      $out->write_seq($seq);
+if ($inout){
+	my $outid = Bio::SeqIO->new(-file => ">In$outfile" , '-format' => 'fasta');
+	my $out = Bio::SeqIO->new(-file => ">Not$outfile" , '-format' => 'fasta');
+	while (my $seq = $in->next_seq()){
+	  my $id=$seq->id;
+	  if ($cogukid){
+	    #print "New id for $id is ";
+	    $id=~s/^COGUK\/(.+)\/\w+.+/$1/;
+	    $id=~s/^\w+\/(.+)\/\d{4}/$1/;
+	    #print "$id\n";
+	  }
+	 ## foreach my $listid (keys %list){
+		if ($list{$id}){
+		 $seq->display_id($id);
+		 $outid->write_seq($seq);
+		 $hits++;
+		 delete $list{$id};
+		}else{
+		  $out->write_seq($seq);
+		}
+	 ## }
     }
- ## }
+}else{
+	my $out = Bio::SeqIO->new(-file => ">$outfile" , '-format' => 'fasta');
+	while (my $seq = $in->next_seq()){
+	  my $id=$seq->id;
+	  if ($cogukid){
+	    #print "New id for $id is ";
+	    $id=~s/^COGUK\/(.+)\/\w+.+/$1/;
+	    $id=~s/^\w+\/(.+)\/\d{4}/$1/;
+	    #print "$id\n";
+	  }
+      #print "$id\n";
+	 ## foreach my $listid (keys %list){
+		if ($list{$id}){
+		 #print "printing fasta for $id\n";
+		 $seq->display_id($id);
+		 $out->write_seq($seq);
+		 $hits++;
+		 delete $list{$id};
+		}
+    }
 }
+
 my @nomatches=keys %list;
 print "There are $hits matches from the $idcnt ids\n";
 print "No matches for @nomatches \n";
+open(NOSEQ,">$nomatchid")||die "Can't open $nomatchid\n";
+print NOSEQ join("\n",@nomatches);
 
 }elsif ($fid){  
 print "Looking for $fid (exact id) in your fasta file $infasta...\n";

@@ -1,75 +1,74 @@
-#!/usr/bin/perl -w
-# A perlscript written by Joseph Hughes, University of Glasgow
-# use this perl script to split a multifasta file into user defined number of files
+#!/usr/bin/perl
 
+# script to split up a fasta file based on a dataframe with sequence in first row 
+# and group in another row which can be specified
 
 use strict;
-use Getopt::Long; 
 use Bio::SeqIO;
+use Getopt::Long;
 
 
-my ($fasta,$split,$help);
-&GetOptions(
-	    'in:s'      => \$fasta,#multifastafile
-	    's:i'   => \$split,#number of files to split it into 
-	    "help"  => \$help,  # provides help with usage
-           );
+my ($in,$fasta,$colname,$help);
+GetOptions(
+       'h|help|?'  => \$help,#het the help information
+	   'in:s'  => \$in,
+	   'fasta:s'  => \$fasta,
+	   'colname:s' =>\$colname,
+	   );
 
-if(!($help)&&!($fasta))
- {
- print "Usage : SplitFasta.pl <list of arguments>, all arguments are necessary\n";
- print " -in <txt> - the text-tab file calculated by CountDiffsFromAlignment.pl\n";
- print " -s <int> - number of files to split it into [optional] if not provided, every sequence will be in it's own file\n";
- print " -help          - Get more detailed help\n";
- exit();
- }
- 
-if($help)
- {
- print "To split a fasta into batches or individual sequences\n\n";
+if (($help)||!$in){
+  print "usage: SplitFasta [-h] [-in text] [-out text] [-unknown Character]\n";
+  print "Part of Sequence-manipulation by J. Hughes (joseph(dot)hughes(at)glasgow(dot)ac(dot)uk\n\n";
 
- print "---------------------------------------------------------------------\n";
- print "Usage : SplitFasta.pl <list of arguments>, all arguments are necessary\n";
- print " -in <txt> - the text-tab file calculated by CountDiffsFromAlignment.pl\n";
- print " -s <int> - number of files to split it into\n";
- print " -help          - Get more detailed help\n";
+  print "   [-h]            = This helpful help screen.\n";
+  print "   [-in text]      = Text-tab delimited file with column names\n";
+  print "   [-fasta text]   = Big fasta file that needs to be split.\n";
+  print "   [-colname text] = The column name to use for splitting by.\n";
+  exit();
+}
 
-exit();
- }
-
-my $in = Bio::SeqIO->new(-file => "$fasta" , '-format' => 'fasta');
-if ($split){
-	my $grep="grep ".'">"'." $fasta |wc -l";
-	#print "$grep\n";
-	my $count=`$grep`;
-	#print "count $count\n";
-	my $seqsplit=$count/$split ;
-	#print "nb of sequences $seqsplit\n";
-	my $cntseq=0;
-	my $i=1;
-	my $filename=$fasta;
-	$filename=~s/(.+)\.(fasta|fa|fna)$/$1\_$i\.fasta/;
-	#print "$filename\n";
-	my $out = Bio::SeqIO->new(-file => ">$filename" , '-format' => 'fasta');
-	while ( my $seq = $in->next_seq() ) {
-	 $cntseq++;
-	 my $batch=$seqsplit*$i;
-	 #print "$cntseq $batch\n";
-	  if ($cntseq<=($seqsplit*$i)){
-		$out->write_seq($seq);
-	  }else{
-		$i++;
-		$filename=$fasta;
-		$filename=~s/(.+)\.(fasta|fa|fna)$/$1\_$i\.fasta/;
-		$out = Bio::SeqIO->new(-file => ">$filename" , '-format' => 'fasta');
-		$out->write_seq($seq);
-	  }
-  
-	}
-}else{
-  while ( my $seq = $in->next_seq() ) {
-	 my $filename=$seq->id();	 
-	 my $out = Bio::SeqIO->new(-file => ">$filename\.fa" , '-format' => 'fasta');
-	 $out->write_seq($seq);
+open(METADATA,"<$in")||die "Can't open $in\n";
+my $header=<METADATA>;
+chomp($header);
+my @colnames=split(/\t/,$header);
+my $col_int;
+for (my $i=0; $i<scalar(@colnames);$i++){
+  if ($colname==$colnames[$i]){
+    $col_int=$i;
   }
 }
+
+my %grouping;
+while(<METADATA>){
+  chomp($_);
+  my @values=split(/\t/,$_);
+  $grouping{$values[0]}=$values[$col_int];
+#  print "$values[0]\t$values[$col_int]\n";
+}
+
+
+my $seqin = Bio::SeqIO->new( -format => 'fasta', -file => $fasta); 
+#my $seqout = Bio::SeqIO->new( -format => 'fasta', -file => ">$out" );
+
+my %sequences;
+while( (my $seq = $seqin->next_seq()) ) {
+  my $seq_id=$seq->display_id();
+  #print "$seq_id ".$grouping{$seq_id}."\n";
+  if ($grouping{$seq_id}=~/./){
+    $sequences{$grouping{$seq_id}}{$seq_id}=$seq->seq();#The back-slash in-front of the hash provides us with a reference to the hash
+    #print $seq."\n";
+  }
+  #my $seqout = Bio::SeqIO->new( -format => 'fasta', -file => ">$out" );
+
+#  $seqout->write_seq($pseq);
+}
+
+for my $group (keys %sequences){
+  my $seqout = Bio::SeqIO->new( -format => 'fasta', -file => ">$group" );
+  for my $seq_id (keys %{$sequences{$group}}){
+    my $seq_obj = Bio::Seq->new(-seq        => $sequences{$group}{$seq_id},
+                         -display_id => $seq_id );
+    $seqout->write_seq($seq_obj);
+  }
+}
+
