@@ -9,7 +9,7 @@ use Getopt::Long;
 use Bio::SeqIO;                    
  
 my $nomatchid="NoMatch_ids.txt";
-my ($infasta,$outfile,$fid,$fdescr,$rdm,$help,$mid,$idfile,$singletons,$frequency,$longest,$inout,$cogukid);
+my ($infasta,$outfile,$fid,$fdescr,$rdm,$help,$mid,$idfile,$singletons,$frequency,$longest,$inout,$cogukid,$coviz);
 &GetOptions(
 	    'in:s'      => \$infasta,#fastafile
 	    'out:s'   => \$outfile,#output fasta file
@@ -19,7 +19,7 @@ my ($infasta,$outfile,$fid,$fdescr,$rdm,$help,$mid,$idfile,$singletons,$frequenc
 	    'nomatchid:s' => \$nomatchid, #text file with the ids for which no sequence was found
 	    "fdescr:s"  => \$fdescr,  # find descr
 	    'cogukid' => \$cogukid,  # if option provided it will assume the cogukid e.g., hCoV-19/England/20144004404/2020...
-	    "rdm"  => \$rdm,  # randomly select a fasta sequence
+	    'coviz' => \$coviz,  
 	    "inout"  => \$inout,  # creates a file In with  the sequences of the list and Out with those that are not in the list
 	    "singletons" => \$singletons, # split file into singletons and non-singletons
 	    "longest" => \$longest,
@@ -37,6 +37,7 @@ if (($help)&&!($help)||!($infasta)||!($outfile)){
  print " -fdescr <txt> - the description of a fasta sequence you want to match - partial match\n";
  print " -rdm - randomly select a sequence from a fasta file\n";
  print " -cogukid - assume the cogukid in the fasta file when only isolate id is provided in idfile, e.g., hCoV-19/England/20144004404/2020\n"; 
+ print " -coviz - assume England/CAMC-139B866/2021|EPI_ISL_1277123|Human|GRY|B.1.1.7|NA|29763|2021-03-06|62|UK-ENGLAND|EUROPE/UNITED_KINGDOM/ENGLAND|\n"; 
  print " -inout - outputs a file In with the sequences in the list and Out with the sequences that are not in the list\nIf option is not used, then only one output is given with the sequences in the list";
  print " -singletons - split file into singletons and no singletons fasta\n";
  print " -longest - output the longest sequence from a amulitfasta file\n";
@@ -69,6 +70,9 @@ if ($inout){
 	    $id=~s/^\w+\/(.+)\/\d{4}/$1/;
 	    #print "$id\n";
 	  }
+	  if ($coviz){
+	    $id=~s/^\w+\/([^|]+)\/\d{4}|\.+/$1/;
+	  }
 	 ## foreach my $listid (keys %list){
 		if ($list{$id}){
 		 $seq->display_id($id);
@@ -90,6 +94,11 @@ if ($inout){
 	    $id=~s/^\w+\/(.+)\/\d{4}/$1/;
 	    #print "$id\n";
 	  }
+	  if ($coviz){
+	    $id=~s/^\w+\/([^|]+)\/\d{4}\|.+/$1/;
+	    #print "$id\n";
+	  }
+
       #print "$id\n";
 	 ## foreach my $listid (keys %list){
 		if ($list{$id}){
