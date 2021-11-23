@@ -181,6 +181,7 @@ if ($gencode eq "universal") {
     $c2p{$_} = "X" for qw(MCT GKG AGK GWA TTS GKC CWG TMG WCG GRY RCC ART);
     $c2p{$_} = "X" for qw(SAG GWT GSG NVT RRT YAW TAK WCC WTG ASG ASC WTC MKT CC- MGA MAG AMG -NT CNC GC- -AG AKG SCC -AN TMT SCG GYC GRG GWC SNN GRN AG- CWC CYC CRG AWG ARC AYG ATS TDT TGR KAG CVT RKT RAG GRK --N GRW TYN YTG YCC TWC AA- MTC NMT -CC NKT SGA AWA SGT SAC GDT G-G WMA RNN KAA RGG WAC YCW RGC A-N WAG NNY NST GST GSA TSG CWR TGK AMY ATR TGW CSA CST WWA ASM WTA MAT TKN TGS TKG YGC YGG TKC AAS STA STT AGM TC- CAS);
     $c2p{$_} = "X" for qw(--C -CA GMC TRN VAT CKC MCG --G TWS CYG GMG SGC NCY NNM G-N CMG GA- NGW MTG BAT NNK MTN TAW HAT KMA NCW CSG T-G G-A A-T NAY WCW CNY TRC C-G TWG);
+    $c2p{$_} = "X" for qw(MGC GSC NGY YGA);
  }   
 #---------------------#
 #  Get nuc sequences
@@ -203,7 +204,10 @@ while (my $seq = $seqio_obj->next_seq()){
         print OUT $c2p{uc($codon)};
         $aapos++;
       }else{
-        print "$codon at aa position $aapos is not in codon table $gencode\n";
+        print OUT "X";
+        $aapos++;
+
+        #print "$codon at aa position $aapos is not in codon table $gencode\n";
         #exit;
         $dodgy{$codon}++;
       }
@@ -216,7 +220,8 @@ while (my $seq = $seqio_obj->next_seq()){
 
 }
 
- for my $c (keys %dodgy){
-   print "$c ";
- }           
-            
+print "Dodgy codons\n";
+for my $c (keys %dodgy){
+  print "$c ";
+}           
+print "\n";           
