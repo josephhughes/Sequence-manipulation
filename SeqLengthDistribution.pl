@@ -10,14 +10,26 @@ use Bio::SeqIO;
 my $lower=0;
 my $sum_len=0;
 my $new_sum_len=0;
-my ($inseq,%freq,%newfreq,$outfile,$upper,$seq_out,$size,$sum_len);
+my ($inseq,%freq,%newfreq,$outfile,$upper,$seq_out,$size,$help);
 &GetOptions(
 	    'inseq:s'   => \$inseq, #the sequences
 	    'out:s'   => \$outfile,#output fasta file
 	    'size:i' =>\$size,#length of sequences to select
 	    'upper:i'   => \$upper,#cutoff size for sequences
 	    'lower:i'   => \$lower,#lower cutoff size for sequences
+	    'help'  => \$help,  # provides help with usage
            );
+if (($help)&&!($help)||!($inseq)){
+ print "Usage : SelectSeq.pl <list of arguments>\n";
+ print " -inseq <txt> - the input fasta file\n";
+ print " -out <txt> - the name of your output fasta file\n";
+ print " -size <int> - length of sequences to select\n";
+ print " -upper <int> - upper cut-off size for sequences\n";
+ print " -lower <txt> - lower cut-off size for sequences\n";
+ print " -help        - Get this help\n";
+ exit();
+ }
+
 
 my $seqio_obj = Bio::SeqIO->new(-file => "$inseq", -format => 'fasta' );
 

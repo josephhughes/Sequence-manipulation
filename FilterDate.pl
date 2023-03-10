@@ -22,8 +22,8 @@ my ($help,$in,$out,$before,$after,$colname);
 
 if ($help||!$in||!$out||!$colname){
   print "Usage: perl \n";
-  print " -in <txt> - text-tab delimited file anonymised\n";
-  print " -out <txt> -text-tab output\n";
+  print " -in <txt> - text-tab delimited (.tsv) or comma-separate (.csv) file anonymised\n";
+  print " -out <txt> - tsv or csv as input\n";
   print " -after <txt> - keep everything after this date cut-off\n";
   print " -before <txt> - keep everything before this date cut-off\n";
   print " -colname <txt> - the column name that contains the dates\n";
@@ -41,25 +41,46 @@ if ($before){
   $before_cutoff=parsedate($before);
   print "Keeping everything before the following date: $before\n";
 }
-
-open(IN,"<$in")||die "Can't open $in\n";
-my $header=<IN>;
-chomp($header);
-print OUT "$header\n";
-my @colnames=split(/\t/,$header);
 my $colnumber;
-for (my $i=0; $i<scalar(@colnames);$i++){
-  if ($colname eq $colnames[$i]){
-    $colnumber=$i;
+if ($in=~/\.tsv$/){
+  open(IN,"<$in")||die "Can't open $in\n";
+  my $header=<IN>;
+  chomp($header);
+  print OUT "$header\n";
+  my @colnames=split(/\t/,$header);
+  for (my $i=0; $i<scalar(@colnames);$i++){
+    if ($colname eq $colnames[$i]){
+      $colnumber=$i;
+    }
   }
+  print "Using column $colnumber => $colname\n";
+}elsif ($in=~/\.csv$/){
+  open(IN,"<$in")||die "Can't open $in\n";
+  my $header=<IN>;
+  chomp($header);
+  print OUT "$header\n";
+  my @colnames=split(/,/,$header);
+  for (my $i=0; $i<scalar(@colnames);$i++){
+    if ($colname eq $colnames[$i]){
+      $colnumber=$i;
+    }
+  }
+  print "Using column $colnumber => $colname\n";
+}else{
+  print "The input does not have the appropriate file extension to be processed\n";
+  exit;
 }
-print "Using column $colnumber => $colname\n"; 
 
 my $exc=0;
 my $inc=0;
 while(<IN>){
   chomp($_);
-  my @col=split(/\t/,$_);
+  my @col;
+  if ($in=~/\.tsv$/){
+    @col=split(/\t/,$_);
+  }elsif($in=~/\.csv$/){
+    @col=split(/,/,$_);
+  }
   my $tp;
   if ($col[$colnumber]=~/\d{4}-\d{2}-\d{2}/){# best format
     #print "Best format >$col[$colnumber]<\n";
@@ -77,11 +98,15 @@ while(<IN>){
     $tp = parsedate($col[$colnumber]);
   }
   #print "$col[0]\t$col[$colnumber]\t$tp\t$before\t$before_cutoff\n";
-  if ($after && $tp>=$after_cutoff && $before && $tp<=$before_cutoff){
-    my $date = localtime($tp)->strftime("%m/%d/%Y");
-    #print $col[$colnumber],"\t",$tp,"\t",$date,"\n";
-    $inc++;
-    print OUT "$_\n";
+  if (!$tp){
+    print "$_\n";
+  }elsif ($after && $before){
+    if ($tp>=$after_cutoff && $tp<=$before_cutoff){
+      my $date = localtime($tp)->strftime("%m/%d/%Y");
+      #print $col[$colnumber],"\t",$tp,"\t",$date,"\n";
+      $inc++;
+      print OUT "$_\n";
+    }
   }elsif ($after && $tp>=$after_cutoff && !$before){
     $inc++;
     print OUT "$_\n";   
