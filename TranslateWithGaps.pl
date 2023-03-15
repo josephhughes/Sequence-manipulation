@@ -181,7 +181,18 @@ if ($gencode eq "universal") {
     $c2p{$_} = "X" for qw(MCT GKG AGK GWA TTS GKC CWG TMG WCG GRY RCC ART);
     $c2p{$_} = "X" for qw(SAG GWT GSG NVT RRT YAW TAK WCC WTG ASG ASC WTC MKT CC- MGA MAG AMG -NT CNC GC- -AG AKG SCC -AN TMT SCG GYC GRG GWC SNN GRN AG- CWC CYC CRG AWG ARC AYG ATS TDT TGR KAG CVT RKT RAG GRK --N GRW TYN YTG YCC TWC AA- MTC NMT -CC NKT SGA AWA SGT SAC GDT G-G WMA RNN KAA RGG WAC YCW RGC A-N WAG NNY NST GST GSA TSG CWR TGK AMY ATR TGW CSA CST WWA ASM WTA MAT TKN TGS TKG YGC YGG TKC AAS STA STT AGM TC- CAS);
     $c2p{$_} = "X" for qw(--C -CA GMC TRN VAT CKC MCG --G TWS CYG GMG SGC NCY NNM G-N CMG GA- NGW MTG BAT NNK MTN TAW HAT KMA NCW CSG T-G G-A A-T NAY WCW CNY TRC C-G TWG);
-    $c2p{$_} = "X" for qw(MGC GSC NGY YGA);
+    $c2p{$_} = "X" for qw(MGC GSC NGY YGA -GC WYT NYT WSC NKA YCN NRT NDT STN TKM TSC DAT TBA NWT);
+    $c2p{$_} = "X" for qw(AMN NHC KYC NWC NMC -GC NBC NSC TG- THC NKC);
+    $c2p{$_} = "X" for qw(TRG NDT TSA NRT TG- NWT RCN TTB TNY TNH TNS TTH YWT TNM TNK TTV);
+    $c2p{$_} = "X" for qw(TNW -NA -GC TNK -GN NNR RCG A-A CRC TND CSC NCM TTD TNR WMC NNW NND CT- C-A);
+    $c2p{$_} = "X" for qw(TAM AWN TMW VCA NGR BTT MCC TG- AGS KTS WGN NWA CT-);
+    $c2p{$_} = "X" for qw(RCG WRT A-A MCC); 
+    $c2p{$_} = "X" for qw(NKG KTW NWT CRC TNY RCG TAM TMC MRC TRG); 
+    $c2p{$_} = "X" for qw(RCG NRT A-A MCC GNK KCK NWT TG- TMC WAM); 
+    $c2p{$_} = "X" for qw(TSC RCG KYT CT- MGG MKG NYA NGK BTG MWC MSG); 
+    $c2p{$_} = "X" for qw(MCC NMA TG-);
+    $c2p{$_} = "X" for qw(NMY NHT NMK NCK GMN NTW MKG GWN AMK NAK MNN SWY NNB);
+    $c2p{$_} = "X" for qw(TG-); 
  }   
 #---------------------#
 #  Get nuc sequences
