@@ -6,10 +6,27 @@
 use strict;
 use Getopt::Long; 
 use Bio::SeqIO;
+use POSIX;
+
+sub largest_value_mem (\%) {
+    my $hash   = shift;
+    my ($key, @keys) = keys   %$hash;
+    my ($big, @vals) = values %$hash;
+
+    for (0 .. $#keys) {
+        if ($vals[$_] > $big) {
+            $big = $vals[$_];
+            $key = $keys[$_];
+        }
+    }
+    $key
+}
 
 my $lower=0;
 my $sum_len=0;
+my $seq_cnt=0;
 my $new_sum_len=0;
+my $new_seq_cnt=0;
 my ($inseq,%freq,%newfreq,$outfile,$upper,$seq_out,$size,$help);
 &GetOptions(
 	    'inseq:s'   => \$inseq, #the sequences
@@ -40,11 +57,13 @@ while( my $seq = $seqio_obj->next_seq ) {
   my $length=$seq->length;
   $freq{$length}++;
   $sum_len=$sum_len+$length;
+  $seq_cnt++;
   if ($outfile && $upper && !$lower){
     if ($length>$upper){
       $seq_out->write_seq($seq);
       $newfreq{$length}++;
       $new_sum_len=$new_sum_len+$length;
+      $new_seq_cnt++;
     }
   }
   if ($outfile && !$upper && $lower){
@@ -52,6 +71,7 @@ while( my $seq = $seqio_obj->next_seq ) {
       $seq_out->write_seq($seq);
       $newfreq{$length}++;
       $new_sum_len=$new_sum_len+$length;
+      $new_seq_cnt++;
     }
   }
   if ($outfile && $upper && $lower){
@@ -59,6 +79,7 @@ while( my $seq = $seqio_obj->next_seq ) {
       $seq_out->write_seq($seq);
       $newfreq{$length}++;
       $new_sum_len=$new_sum_len+$length;
+      $new_seq_cnt++;
     }
   }
   if ($outfile && $size){
@@ -66,6 +87,7 @@ while( my $seq = $seqio_obj->next_seq ) {
       $seq_out->write_seq($seq);
       $newfreq{$length}++;
       $new_sum_len=$new_sum_len+$length;
+      $new_seq_cnt++;
     }
   }
 }
@@ -80,13 +102,19 @@ foreach my $seqnb (sort {$a<=>$b} keys %freq){
 }
 
 print "Sum of lengths is $sum_len\n";
-print "New distribution:\nx sequences with y length\n";
-foreach my $seqnb (sort {$a<=>$b} keys %newfreq){
-  print "$seqnb\t$freq{$seqnb}\t";
-#   for (my $i=0; $i<$freq{$seqnb}; $i++){
-#     print ":";
-#   }
-  print "\n";
-}
+print "Average length ".ceil($sum_len/$seq_cnt)."\n";
+print "Sequence length with the largest number of sequences ".largest_value_mem(%freq)."\n";
+if ($new_seq_cnt>0){
+  print "New distribution:\nx sequences with y length\n";
+  foreach my $seqnb (sort {$a<=>$b} keys %newfreq){
+    print "$seqnb\t$freq{$seqnb}\t";
+  #   for (my $i=0; $i<$freq{$seqnb}; $i++){
+  #     print ":";
+  #   }
+    print "\n";
+  }
+  print "Sum of lengths in the newfile is $new_sum_len\n";
+  print "Average length in the newfile is ".ceil($new_sum_len/$new_seq_cnt)."\n";
+  print "Sequence length with the largest number of sequences in the newfile is ".largest_value_mem(%newfreq)."\n";
 
-print "Sum of lengths in the newfile is $new_sum_len\n";
+}
