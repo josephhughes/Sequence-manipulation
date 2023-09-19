@@ -50,15 +50,15 @@ print OUT "sequence_name";
 for (my $i=0; $i<$total_sites; $i++){
   if ($ssi && $ssi_list{($i+1)}){ 
     if ($gene){ 
-      print OUT "\t".$gene."position".($i+1);
+      print OUT "\t".$gene."_".($i+1);
     }else{
-      print OUT "\tposition".($i+1);
+      print OUT "\t_".($i+1);
     }
   }elsif(!$ssi){
     if ($gene){ 
-      print OUT "\t".$gene."position".($i+1);
+      print OUT "\t".$gene."_".($i+1);
     }else{
-      print OUT "\tposition".($i+1);
+      print OUT "\t_".($i+1);
     }
   }
 }

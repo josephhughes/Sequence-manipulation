@@ -9,12 +9,13 @@ use Getopt::Long;
 use Bio::SeqIO;                    
  
 my $nomatchid="NoMatch_ids.txt";
-my ($infasta,$outfile,$fid,$fdescr,$rdm,$help,$mid,$idfile,$singletons,$frequency,$longest,$inout,$cogukid,$coviz);
+my ($infasta,$outfile,$fid,$fdescr,$rdm,$help,$mid,$idfile,$singletons,$frequency,$longest,$inout,$cogukid,$coviz,$dedup,$rmid);
 &GetOptions(
 	    'in:s'      => \$infasta,#fastafile
 	    'out:s'   => \$outfile,#output fasta file
 	    'fid:s'   => \$fid,#find id
 	    'mid:s'  => \$mid,#match id
+	    'rmid:s'  => \$rmid,#remove a specific matching id
 	    'idfile:s' => \$idfile, #text file with mutliple ids to pull out
 	    'nomatchid:s' => \$nomatchid, #text file with the ids for which no sequence was found
 	    "fdescr:s"  => \$fdescr,  # find descr
@@ -24,6 +25,7 @@ my ($infasta,$outfile,$fid,$fdescr,$rdm,$help,$mid,$idfile,$singletons,$frequenc
 	    "singletons" => \$singletons, # split file into singletons and non-singletons
 	    "longest" => \$longest,
 	    "freq:s"  => \$frequency, #frequency a sequence needs to be found at
+	    "dedup"  => \$dedup, #option to only keep the first occurrence of a duplicated id
 	    "help"  => \$help,  # provides help with usage
            );
 if (($help)&&!($help)||!($infasta)||!($outfile)){
@@ -32,6 +34,7 @@ if (($help)&&!($help)||!($infasta)||!($outfile)){
  print " -out <txt> - the name of your output fasta file\n";
  print " -fid <txt> - the id of the fasta file you want to match - exact match\n";
  print " -mid <txt> - the id of the fasta file you want to match - partial match\n";
+ print " -rmid <txt> - remove a specific sequence based on id match\n";
  print " -idfile <txt> - a file with multiple ids you want to match pull out\n";
  print " -nomatchid <txt> - text file with the ids for which no sequence was found [default NoMatch_ids.txt]\n";
  print " -fdescr <txt> - the description of a fasta sequence you want to match - partial match\n";
@@ -40,6 +43,7 @@ if (($help)&&!($help)||!($infasta)||!($outfile)){
  print " -coviz - assume England/CAMC-139B866/2021|EPI_ISL_1277123|Human|GRY|B.1.1.7|NA|29763|2021-03-06|62|UK-ENGLAND|EUROPE/UNITED_KINGDOM/ENGLAND|\n"; 
  print " -inout - outputs a file In with the sequences in the list and Out with the sequences that are not in the list\nIf option is not used, then only one output is given with the sequences in the list";
  print " -singletons - split file into singletons and no singletons fasta\n";
+ print " -dedup - only keep the first occurrence of a duplicated id (doesn't check the sequence)\n";
  print " -longest - output the longest sequence from a amulitfasta file\n";
  print " -help        - Get this help\n";
  exit();
@@ -199,6 +203,38 @@ my $singletons = Bio::SeqIO->new(-file => ">$outfile.singletons.fa" , '-format' 
                           -display_id => $id);# -desc => $nbseqs, 
         $singletons->write_seq($seq_obj);
       }
+    }
+  }
+}elsif($dedup){
+  my %seen;
+  my $in  = Bio::SeqIO->new(-file => "$infasta" ,
+                         -format => 'fasta');
+  my $nodups = Bio::SeqIO->new(-file => ">$outfile.nodups.fa" , '-format' => 'fasta');
+  while (my $seq = $in->next_seq()){
+    my $id=$seq->id;
+    if ($seen{$id}){
+      $seen{$id}++;
+    }else{
+     $seen{$id}++;
+     $nodups->write_seq($seq);    
+    }
+  }
+  foreach my $id (keys %seen){
+    if ($seen{$id}>1){
+      print "$id found $seen{$id}\n";
+    }
+  }
+  print "Only the first occurrence of this id and sequence has been saved to $outfile.nodups.fa\n";
+}elsif($rmid){
+  my $in  = Bio::SeqIO->new(-file => "$infasta" ,
+                         -format => 'fasta');
+  my $rmidfile = Bio::SeqIO->new(-file => ">$outfile.noid$rmid.fa" , '-format' => 'fasta');
+  while (my $seq = $in->next_seq()){
+    my $id=$seq->id;
+    if ($id eq $rmid){
+      print "Removing $id\n";
+    }else{
+     $rmidfile->write_seq($seq);    
     }
   }
 
